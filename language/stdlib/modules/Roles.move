@@ -50,7 +50,7 @@ module Roles {
 
     /// The roleId contains the role id for the account. This is only moved
     /// to an account as a top-level resource, and is otherwise immovable.
-    /// INVARIANT: Once an account at address `A` is granted a role `R` it
+    /// SPEC RoleIdPersists: Once an account at address `A` is granted a role `R` it
     ///            will remain an account with role `R` for all time.
     resource struct RoleId {
         role_id: u64,
@@ -63,7 +63,7 @@ module Roles {
     /// Privileges are extracted in to capabilities. Capabilities hold /
     /// the account address that they were extracted from (i.e. tagged or
     /// "tainted"). Capabilities can then only be restored to the account
-    /// where they were extracted from.
+    /// from which they were extracted.
     resource struct Capability<Privilege: resource> {
         owner_address: address,
     }
@@ -318,7 +318,7 @@ module Roles {
     /// only be granted if you have the correct role. When a capability
     /// leaves the module we tag it with the account where it was held. You
     /// can only put the capability back if the `account` address you are
-    /// storing it back under and the `owner_address` if the incoming capability agree.
+    /// storing it back under and the `owner_address` of the incoming capability agree.
     /// INVARIANT: Once a privilege witness is created and stored under
     /// a Privilege<PrivWitness> resource at an address A there are only two states:
     /// 1. The resource Privilege<PrivWitness> is stored at A;
@@ -354,5 +354,99 @@ module Roles {
         // Set that the privilege is now put back
         borrow_global_mut<Privilege<Priv>>(owner_address).is_extracted = false;
     }
+
+//**************** Specifications ****************
+
+    /// ## Role persistence
+
+    spec module {
+        pragma verify = true;
+    }
+
+    /// Helper functions
+    spec module {
+        define spec_has_role_id(addr: address): bool {
+            exists<RoleId>(addr)
+        }
+
+        define spec_get_role_id(addr: address): u64 {
+            global<RoleId>(addr).role_id
+        }
+
+        define SPEC_ASSOCIATION_ROOT_ROLE_ID(): u64 { 0 }
+        define SPEC_TREASURY_COMPLIANCE_ROLE_ID(): u64 { 1 }
+        define SPEC_DESIGNATED_DEALER_ROLE_ID(): u64 { 2 }
+        define SPEC_VALIDATOR_ROLE_ID(): u64 { 3 }
+        define SPEC_VALIDATOR_OPERATOR_ROLE_ID(): u64 { 4 }
+        define SPEC_PARENT_VASP_ROLE_ID(): u64 { 5 }
+        define SPEC_CHILD_VASP_ROLE_ID(): u64 { 6 }
+        define SPEC_UNHOSTED_ROLE_ID(): u64 { 7 }
+
+    }
+
+    /// Property stated informally at definition of RoleId resource
+    /// TODO: Need a consistent convention for where to document properties.
+    /// For now, restating here.
+    ///
+    /// **Informally:** Once an account at address `A` is granted a role `R` it
+    /// will remain an account with role `R` for all time.    
+    spec schema RoleIdPersists {
+        ensures forall addr: address where old(spec_has_role_id(addr)) :
+            spec_has_role_id(addr) && (old(spec_get_role_id(addr)) == spec_get_role_id(addr));
+    }
+
+    spec module {
+        apply RoleIdPersists to *<T>, *;
+    }
+
+    /// ## Role-specific privileges
+    ///
+    /// Each address has a role-specific privilege corresponding iff that address has
+    /// an RoleId and the role_id of the account matches the privilege.
+    ///
+    spec schema AssociationRootRoleMatchesRoleId {
+        // precondition to grant_root_association
+        // every address has assoc_root role_id iff if it has the privilege
+        // adding one more should preserve it.
+        invariant forall addr: address where spec_has_role_id(addr):
+            exists<Privilege<AssociationRootRole>>(addr)
+            ==> (spec_get_role_id(addr) == SPEC_ASSOCIATION_ROOT_ROLE_ID());
+
+        // invariant forall addr: address where spec_has_role_id(addr):
+        //     (spec_get_role_id(addr) == SPEC_ASSOCIATION_ROOT_ROLE_ID())
+        //     ==> exists<Privilege<AssociationRootRole>>(addr);
+    }
+    spec module {
+        apply AssociationRootRoleMatchesRoleId to *<T>, *;
+    }
+
+    
+
+
+    // spec schema TreasuryComplianceRoleMatchesRoleId {
+    //     invariant forall addr: address where spec_has_role_id(addr):
+    //         (spec_get_role_id(addr) == SPEC_TREASURY_COMPLIANCE_ROLE_ID())
+    //          ==> exists<Privilege<TreasuryComplianceRole>>(addr);
+    // }
+    // spec module {
+    //     apply TreasuryComplianceRoleMatchesRoleId to *<T>, *;
+    // }
+
+
+    /// TODO: Role is supposed to be set by end of genesis?
+
+    /// TODO: role-specific privileges persist, and role_ids never change?
+    
+
+    /// ## Capabilities
+    ///
+    /// TODO: Capability is stored a owner_address unlees is_extract == true??
+    /// TODO: Capability always returned to owner_address
+    spec module {}
+
+    
+
+
+
 }
 }

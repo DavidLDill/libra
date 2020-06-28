@@ -16,7 +16,10 @@ module LBR {
     use 0x1::Coin2::Coin2;
     use 0x1::CoreAddresses;
     use 0x1::FixedPoint32::{Self, FixedPoint32};
-    use 0x1::Libra::{Self, Libra,  RegisterNewCurrency};
+    use 0x1::Libra::{Self, Libra,
+    // DD: refactor
+    // RegisterNewCurrency
+    };
     use 0x1::Roles::{Capability, TreasuryComplianceRole};
     use 0x1::Signer;
 
@@ -67,7 +70,10 @@ module LBR {
     /// restrictions are enforced in the `Libra::register_currency` function, but also enforced here.
     public fun initialize(
         association: &signer,
-        register_currency_capability: &Capability<RegisterNewCurrency>,
+        // DD: refactor
+        // register_currency_capability: &Capability<RegisterNewCurrency>,
+        tc_account: &signer,
+        // DD: this is actually the same as register_currency_capability. Keeping it
         tc_capability: &Capability<TreasuryComplianceRole>,
     ) {
         // Operational constraint
@@ -75,7 +81,9 @@ module LBR {
         // Register the `LBR` currency.
         let (mint_cap, burn_cap) = Libra::register_currency<LBR>(
             association,
-            register_currency_capability,
+            // DD: refactor
+            // register_currency_capability,
+            tc_account,
             FixedPoint32::create_from_rational(1, 1), // exchange rate to LBR
             true,    // is_synthetic
             1000000, // scaling_factor = 10^6

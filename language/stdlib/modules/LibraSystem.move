@@ -10,7 +10,9 @@ module LibraSystem {
     use 0x1::Signer;
     use 0x1::ValidatorConfig;
     use 0x1::Vector;
-    use 0x1::Roles::{Capability, LibraRootRole};
+    // DD: refactor
+    // use 0x1::Roles::{Capability, LibraRootRole};
+    use 0x1::Roles::{Capability, assert_has_libra_root_role};
 
     struct ValidatorInfo {
         addr: address,
@@ -68,9 +70,12 @@ module LibraSystem {
 
     // Adds a new validator, this validator should met the validity conditions
     public fun add_validator(
-        _: &Capability<LibraRootRole>,
+        // DD: refactor
+        // _: &Capability<LibraRootRole>,
+        lr_account: &signer,
         account_address: address
     ) acquires CapabilityHolder {
+        assert_has_libra_root_role(lr_account);
         // A prospective validator must have a validator config resource
         assert(ValidatorConfig::is_valid(account_address), 33);
 
@@ -91,9 +96,12 @@ module LibraSystem {
 
     // Removes a validator, only callable by the LibraAssociation address
     public fun remove_validator(
-        _: &Capability<LibraRootRole>,
+        // DD: refactor
+        // _: &Capability<LibraRootRole>,
+        lr_account: &signer,
         account_address: address
     ) acquires CapabilityHolder {
+        assert_has_libra_root_role(lr_account);    
         let validator_set = get_validator_set();
         // Ensure that this address is an active validator
         let to_remove_index_vec = get_validator_index_(&validator_set.validators, account_address);
@@ -109,7 +117,12 @@ module LibraSystem {
     // get copied into the ValidatorSet.
     // Invalid validators will get removed from the Validator Set.
     // NewEpochEvent event will be fired.
-    public fun update_and_reconfigure(_: &Capability<LibraRootRole>) acquires CapabilityHolder {
+    public fun update_and_reconfigure(
+        // DD: refactor
+        // _: &Capability<LibraRootRole>,
+        lr_account: &signer
+        ) acquires CapabilityHolder {
+        assert_has_libra_root_role(lr_account);
         let validator_set = get_validator_set();
         let validators = &mut validator_set.validators;
 

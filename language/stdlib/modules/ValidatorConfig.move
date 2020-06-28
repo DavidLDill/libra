@@ -14,7 +14,9 @@ module ValidatorConfig {
     use 0x1::Option::{Self, Option};
     use 0x1::Signature;
     use 0x1::Signer;
-    use 0x1::Roles::{Self, Capability, LibraRootRole};
+    // DD: refactor
+    // use 0x1::Roles::{Self, Capability, LibraRootRole};
+    use 0x1::Roles::{Self, assert_has_libra_root_role};
 
     resource struct UpdateValidatorConfig {}
 
@@ -43,7 +45,13 @@ module ValidatorConfig {
     // Validator setup methods
     ///////////////////////////////////////////////////////////////////////////
 
-    public fun publish(account: &signer, _: &Capability<LibraRootRole>) {
+    public fun publish(
+        account: &signer,
+        // DD: refactor
+        // _: &Capability<LibraRootRole>,
+        lr_account: &signer,
+        ) {
+        assert_has_libra_root_role(lr_account);
         move_to(account, ValidatorConfig {
             config: Option::none(),
             operator_account: Option::none(),

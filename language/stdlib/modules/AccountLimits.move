@@ -9,7 +9,9 @@ module AccountLimits {
     use 0x1::CoreAddresses;
     use 0x1::LibraTimestamp;
     use 0x1::Signer;
-    use 0x1::Roles::{Capability, TreasuryComplianceRole, LibraRootRole};
+    // DD: refactor
+    // use 0x1::Roles::{Capability, TreasuryComplianceRole, LibraRootRole};
+    use 0x1::Roles::{Capability, TreasuryComplianceRole, assert_has_libra_root_role};
 
     // An operations capability that restricts callers of this module since
     // the operations can mutate account states.
@@ -50,7 +52,8 @@ module AccountLimits {
 
     // Grant a capability to call this module. This does not necessarily
     // need to be a unique capability.
-    public fun grant_calling_capability(_: &Capability<LibraRootRole>): CallingCapability {
+    public fun grant_calling_capability(lr_account: &signer): CallingCapability {
+        assert_has_libra_root_role(lr_account);
         CallingCapability{}
     }
 

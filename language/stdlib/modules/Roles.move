@@ -176,9 +176,12 @@ module Roles {
     /// and roles.
     public fun grant_treasury_compliance_role(
         treasury_compliance_account: &signer,
-        _: &Capability<LibraRootRole>,
-    ) {
+        // DD: refactor
+        // _: &Capability<LibraRootRole>,
+        lr_account: &signer,
+    ) acquires RoleId {
         LibraTimestamp::assert_is_genesis();
+        assert_has_libra_root_role(lr_account);
         let owner_address = Signer::address_of(treasury_compliance_account);
         assert(owner_address == CoreAddresses::TREASURY_COMPLIANCE_ADDRESS(), 0);
         // Grant the TC role to the treasury_compliance_account
@@ -285,6 +288,76 @@ module Roles {
         move_to(new_account, Privilege<UnhostedRole>{ witness: UnhostedRole{}, is_extracted: false })
     }
 
+    // DD refactor: privilege-checking functions for roles
+    /// assert_has_*_role and assert_has_*_privilege functions are derived exactly from the
+    /// "Libra Governance roles & permissions" spreadsheet
+    /// https://docs.google.com/spreadsheets/d/13pL_0JCdNkGTMemVYKLvGifiF-svP_fW_pT6CjxFMCA/edit#gid=0
+    /// MintCurrency, BurnCurrency, PreburnCurrency, RotateAuthenticationKey, WithdrawalCapability are
+    /// omitted because they all involve real capabilities. They were also not handled in the
+    /// Roles module before refactoring.
+    ///
+    /// Naming conventions: Many of the "has_*_privilege" functions do have the same body
+    /// because the spreadsheet grants all such privileges to addresses (usually a single
+    /// address) with that role. In effect, having the privilege is equivalent to having the
+    /// role, but the function names document the specific privilege involved.  Also, modules
+    /// that use these functions as a privilege check can hide specific roles, so that a change
+    /// in the privilege/role relationship can be implemented by changing Roles and not the
+    /// module that uses it.
+
+    public fun assert_has_role(account: &signer, role_id: u64) acquires RoleId {
+       let addr = Signer::address_of(account);
+       // TODO (dd): abort code
+       assert(exists<RoleId>(addr)
+                  && borrow_global<RoleId>(addr).role_id == role_id,
+              100);
+    }
+
+    public fun assert_has_libra_root_role(account: &signer) acquires RoleId {
+        assert_has_role(account, LIBRA_ROOT_ROLE_ID());
+    }
+
+    public fun assert_has_treasury_compliance_role(account: &signer) acquires RoleId {
+        assert_has_role(account, TREASURY_COMPLIANCE_ROLE_ID());
+    }
+
+    public fun assert_has_designated_dealer_role(account: &signer) acquires RoleId {
+        assert_has_role(account, DESIGNATED_DEALER_ROLE_ID());
+    }
+
+    public fun assert_has_validator_role(account: &signer) acquires RoleId {
+        assert_has_role(account, VALIDATOR_ROLE_ID());
+    }
+
+    public fun assert_has_validator_operator_role(account: &signer) acquires RoleId {
+        assert_has_role(account, VALIDATOR_OPERATOR_ROLE_ID());
+    }
+
+    public fun assert_has_parent_VASP_role(account: &signer) acquires RoleId {
+        assert_has_role(account, PARENT_VASP_ROLE_ID());
+    }
+
+    public fun assert_has_child_VASP_role(account: &signer) acquires RoleId {
+        assert_has_role(account, CHILD_VASP_ROLE_ID());
+    }
+
+    public fun assert_has_unhosted_role(account: &signer) acquires RoleId {
+        assert_has_role(account, UNHOSTED_ROLE_ID());
+    }
+
+    public fun assert_has_register_new_currency_privilege(account: &signer) acquires RoleId {
+         assert_has_treasury_compliance_role(account);
+    }
+
+    public fun assert_has_update_dual_attestation_threshold_privilege(account: &signer) acquires RoleId {
+         assert_has_treasury_compliance_role(account);
+    }
+
+    public fun assert_has_on_chain_config_privilege(account: &signer) acquires RoleId {
+       assert_has_treasury_compliance_role(account)    
+    }
+
+    
+
     ///////////////////////////////////////////////////////////////////////////
     // Capability Extraction from Privileges, and Restoration to Privileges
     ///////////////////////////////////////////////////////////////////////////
@@ -355,12 +428,14 @@ module Roles {
 
     /// Helper functions
     spec module {
-        define spec_has_role_id(addr: address): bool {
-            exists<RoleId>(addr)
+        define spec_get_role_id(account: signer): u64 {
+            let addr = Signer::spec_address_of(account);
+            global<RoleId>(addr).role_id
         }
 
-        define spec_get_role_id(addr: address): u64 {
-            global<RoleId>(addr).role_id
+        define spec_has_role_id(account: signer, role_id: u64): bool {
+            let addr = Signer::spec_address_of(account);
+            exists<RoleId>(addr) && global<RoleId>(addr).role_id == role_id
         }
 
         define SPEC_LIBRA_ROOT_ROLE_ID(): u64 { 0 }
@@ -372,13 +447,51 @@ module Roles {
         define SPEC_CHILD_VASP_ROLE_ID(): u64 { 6 }
         define SPEC_UNHOSTED_ROLE_ID(): u64 { 7 }
 
+        define spec_has_libra_root_role(account: signer): bool {
+            spec_has_role_id(account, SPEC_LIBRA_ROOT_ROLE_ID())
+        }
+
+        define spec_has_treasury_compliance_role(account: signer): bool {
+            spec_has_role_id(account, SPEC_TREASURY_COMPLIANCE_ROLE_ID())
+        }
+
+        define spec_has_designated_dealer_role(account: signer): bool {
+            spec_has_role_id(account, SPEC_DESIGNATED_DEALER_ROLE_ID())
+        }
+
+        define spec_has_validator_role(account: signer): bool {
+            spec_has_role_id(account, SPEC_VALIDATOR_ROLE_ID())
+        }
+
+        define spec_has_validator_operator_role(account: signer): bool {
+            spec_has_role_id(account, SPEC_VALIDATOR_OPERATOR_ROLE_ID())
+        }
+
+        define spec_has_parent_VASP_role(account: signer): bool {
+            spec_has_role_id(account, SPEC_PARENT_VASP_ROLE_ID())
+        }
+
+        define spec_has_child_VASP_role(account: signer): bool {
+            spec_has_role_id(account, SPEC_CHILD_VASP_ROLE_ID())
+        }
+
+        define spec_has_unhosted_role(account: signer): bool {
+            spec_has_role_id(account, SPEC_UNHOSTED_ROLE_ID())
+        }
+
+        define spec_has_register_new_currency_privilege(account: signer): bool {
+            spec_has_treasury_compliance_role(account)
+        }
+
+
     }
 
     /// **Informally:** Once an account at address `A` is granted a role `R` it
     /// will remain an account with role `R` for all time.
     spec schema RoleIdPersists {
-        ensures forall addr: address where old(spec_has_role_id(addr)) :
-            spec_has_role_id(addr) && (old(spec_get_role_id(addr)) == spec_get_role_id(addr));
+        ensures forall addr: address where old(exists<RoleId>(addr)):
+            exists<RoleId>(addr)
+                && old(global<RoleId>(addr).role_id) == global<RoleId>(addr).role_id;
     }
 
     spec module {
@@ -394,7 +507,7 @@ module Roles {
         /// >TODO BUG (dd): The Prover finds many false errors for the following because
         /// the Prover thinks many add_privilege_* functions can store *any* privilege,
         /// including the LibraRootRole, on addresses that don't have the
-        /// association root RootId.  This false error is due to a limitation of
+        /// association root RoleId.  This false error is due to a limitation of
         /// the Move Prover. In reality, the add_privilege_* functions cannot
         /// be called with an LibraRootRole argument, because no instances
         /// of LibraRootRole can be accessed by another module (and, of course,
@@ -405,8 +518,8 @@ module Roles {
         //     exists<Privilege<LibraRootRole>>(addr)
         //     ==> (spec_get_role_id(addr) == SPEC_LIBRA_ROOT_ROLE_ID());
 
-        invariant module forall addr: address where spec_has_role_id(addr):
-            (spec_get_role_id(addr) == SPEC_LIBRA_ROOT_ROLE_ID())
+        invariant module forall addr: address where exists<RoleId>(addr):
+            (global<RoleId>(addr).role_id == SPEC_LIBRA_ROOT_ROLE_ID())
             ==> exists<Privilege<LibraRootRole>>(addr);
     }
     spec module {
@@ -420,8 +533,8 @@ module Roles {
     /// same problem as LibraRootRoleMatchesRoleId due to prover
     /// limitation.
     spec schema TreasuryComplianceRoleMatchesRoleId {
-        invariant module forall addr: address where spec_has_role_id(addr):
-            (spec_get_role_id(addr) == SPEC_TREASURY_COMPLIANCE_ROLE_ID())
+        invariant module forall addr: address where exists<RoleId>(addr):
+            (global<RoleId>(addr).role_id == SPEC_TREASURY_COMPLIANCE_ROLE_ID())
              ==> exists<Privilege<TreasuryComplianceRole>>(addr);
     }
     spec module {

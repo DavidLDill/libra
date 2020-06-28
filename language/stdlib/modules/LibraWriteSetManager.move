@@ -7,7 +7,8 @@ module LibraWriteSetManager {
     use 0x1::Hash;
     use 0x1::Signer;
     use 0x1::LibraConfig;
-    use 0x1::Roles;
+    // DD: refactor
+    // use 0x1::Roles;
 
     resource struct LibraWriteSetManager {
         upgrade_events: Event::EventHandle<Self::UpgradeEvent>,
@@ -49,16 +50,18 @@ module LibraWriteSetManager {
         );
     }
 
-    fun epilogue(account: &signer, writeset_payload: vector<u8>) acquires LibraWriteSetManager {
+    fun epilogue(lr_account: &signer, writeset_payload: vector<u8>) acquires LibraWriteSetManager {
         let t_ref = borrow_global_mut<LibraWriteSetManager>(CoreAddresses::LIBRA_ROOT_ADDRESS());
-        let association_root_capability = Roles::extract_privilege_to_capability(account);
+        // DD: refactor
+        // let association_root_capability = Roles::extract_privilege_to_capability(account);
 
         Event::emit_event<Self::UpgradeEvent>(
             &mut t_ref.upgrade_events,
             UpgradeEvent { writeset_payload },
         );
-        LibraConfig::reconfigure(&association_root_capability);
-        Roles::restore_capability_to_privilege(account, association_root_capability);
+        LibraConfig::reconfigure(lr_account)
+        // DD: refactor
+        // Roles::restore_capability_to_privilege(account, association_root_capability);
     }
 }
 

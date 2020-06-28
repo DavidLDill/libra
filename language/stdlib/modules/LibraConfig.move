@@ -5,7 +5,9 @@ module LibraConfig {
     use 0x1::LibraTimestamp;
     use 0x1::Signer;
     use 0x1::Offer;
-    use 0x1::Roles::{Self, Capability, LibraRootRole};
+    // DD: refactor    
+    // use 0x1::Roles::{Self, Capability, LibraRootRole};
+    use 0x1::Roles::{Self, Capability, assert_has_libra_root_role};
 
     resource struct CreateOnChainConfig {}
 
@@ -25,7 +27,7 @@ module LibraConfig {
     // Accounts with this privilege can modify config of type TypeName under default_address
     resource struct ModifyConfigCapability<TypeName> {}
 
-    /// Will fail if the account is not association root
+    // Will fail if the account is not association root
     public fun grant_privileges(account: &signer) {
         Roles::add_privilege_to_account_association_root_role(account, CreateOnChainConfig{});
     }
@@ -142,9 +144,12 @@ module LibraConfig {
     }
 
     public fun reconfigure(
-        _: &Capability<LibraRootRole>,
+        // DD: refactor
+        // _: &Capability<LibraRootRole>,
+        lr_account: &signer,
     ) acquires Configuration {
         // Only callable by association address or by the VM internally.
+        assert_has_libra_root_role(lr_account);
         reconfigure_();
     }
 

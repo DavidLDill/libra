@@ -11,7 +11,7 @@ module Libra {
     use 0x1::RegisteredCurrencies::{Self, RegistrationCapability};
     use 0x1::Signer;
     use 0x1::Vector;
-    use 0x1::Roles::{Self, Capability, TreasuryComplianceRole};
+    use 0x1::Roles::{Self, Capability, TreasuryComplianceRole, assert_has_register_new_currency_privilege};
     use 0x1::LibraConfig::CreateOnChainConfig;
     use 0x1::LibraTimestamp;
 
@@ -663,7 +663,9 @@ module Libra {
     /// `MintCapability<CoinType>` and `BurnCapability<CoinType>` resources.
     public fun register_currency<CoinType>(
         account: &signer,
-        _: &Capability<RegisterNewCurrency>,
+        // DD refactor
+        // _: &Capability<RegisterNewCurrency>,
+        tc_account: &signer,
         to_lbr_exchange_rate: FixedPoint32,
         is_synthetic: bool,
         scaling_factor: u64,
@@ -671,6 +673,7 @@ module Libra {
         currency_code: vector<u8>,
     ): (MintCapability<CoinType>, BurnCapability<CoinType>)
     acquires CurrencyRegistrationCapability {
+        assert_has_register_new_currency_privilege(tc_account);
         // Operational constraint that it must be stored under a specific
         // address.
         assert(
@@ -700,6 +703,7 @@ module Libra {
         (MintCapability<CoinType>{}, BurnCapability<CoinType>{})
     }
     spec fun register_currency {
+        aborts_if !Roles::spec_has_register_new_currency_privilege(tc_account);
         aborts_if Signer::spec_address_of(account) != CoreAddresses::SPEC_CURRENCY_INFO_ADDRESS();
         aborts_if !exists<CurrencyRegistrationCapability>(CoreAddresses::SPEC_LIBRA_ROOT_ADDRESS());
         aborts_if exists<CurrencyInfo<CoinType>>(Signer::spec_address_of(account));

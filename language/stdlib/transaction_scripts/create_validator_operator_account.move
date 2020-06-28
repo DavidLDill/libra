@@ -7,7 +7,8 @@ script {
         let assoc_root_role = Roles::extract_privilege_to_capability<LibraRootRole>(creator);
         LibraAccount::create_validator_operator_account(
             creator,
-            &assoc_root_role,
+            // DD: refactor
+            // &assoc_root_role,
             new_account_address,
             auth_key_prefix
         );

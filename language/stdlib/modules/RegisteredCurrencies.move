@@ -83,7 +83,18 @@ module RegisteredCurrencies {
 
     // **************** Global Specification ****************
 
-    /// # Module specifications
+    // spec schema OnlyConfigAddressHasRegisteredCurrencies {
+    //     /// There is no address with a RegisteredCurrencies value before initialization.
+    //     invariant module !spec_is_initialized()
+    //         ==> (forall addr: address: !LibraConfig::spec_is_published<RegisteredCurrencies>(addr));
+
+    //     /// *Informally:* After initialization, only singleton_address() has a RegisteredCurrencies value.
+    //     invariant module spec_is_initialized()
+    //         ==> LibraConfig::spec_is_published<RegisteredCurrencies>(CoreAddresses::SPEC_LIBRA_ROOT_ADDRESS())
+    //             && (forall addr: address:
+    //                    LibraConfig::spec_is_published<RegisteredCurrencies>(addr)
+    //                               ==> addr == CoreAddresses::SPEC_LIBRA_ROOT_ADDRESS());
+    // }
 
     spec module {
         pragma verify = true;

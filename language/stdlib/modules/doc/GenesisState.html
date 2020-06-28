@@ -1,0 +1,176 @@
+<p><a name="0x1_GenesisState"></a></p>
+<h1 id="module-0x1genesisstate">Module <code>0x1::GenesisState</code></h1>
+<h3 id="table-of-contents">Table of Contents</h3>
+<ul>
+<li><a href="#0x1_GenesisState_GenesisState">Struct <code>GenesisState</code></a></li>
+<li><a href="#0x1_GenesisState_genesis_address">Function <code>genesis_address</code></a></li>
+<li><a href="#0x1_GenesisState_begin_genesis">Function <code>begin_genesis</code></a></li>
+<li><a href="#0x1_GenesisState_end_genesis">Function <code>end_genesis</code></a></li>
+<li><a href="#0x1_GenesisState_is_during_genesis">Function <code>is_during_genesis</code></a></li>
+<li><a href="#0x1_GenesisState_is_after_genesis">Function <code>is_after_genesis</code></a></li>
+<li><a href="#0x1_GenesisState_Specification">Specification</a>
+<ul>
+<li><a href="#0x1_GenesisState_@GenesisState">GenesisState</a>
+<ul>
+<li><a href="#0x1_GenesisState_@GenesisState_state_machine">GenesisState state machine</a></li>
+</ul></li>
+<li><a href="#0x1_GenesisState_Specification_genesis_address">Function <code>genesis_address</code></a></li>
+<li><a href="#0x1_GenesisState_Specification_begin_genesis">Function <code>begin_genesis</code></a></li>
+<li><a href="#0x1_GenesisState_Specification_end_genesis">Function <code>end_genesis</code></a></li>
+</ul></li>
+</ul>
+<p>This file implements a state variable to track the status of genesis. It is in a separate leave module, because it will be used by lots of other modules to check whether functions are being called during the genesis process or not. Putting it in Genesis would introduce a ton of dependencies, but using GenesisState will not.</p>
+<p><a name="0x1_GenesisState_GenesisState"></a></p>
+<h2 id="struct-genesisstate">Struct <code>GenesisState</code></h2>
+<p>A singleton resource that stores the state of the genesis process on genesis_address()</p>
+<pre><code><b>resource</b> <b>struct</b> <a href="#0x1_GenesisState">GenesisState</a>
+</code></pre>
+<details>
+<p><summary>Fields</summary></p>
+<dl>
+<dt>
+<code>genesis_complete: bool</code>
+</dt>
+<dd>
+</dd>
+</dl>
+</details>
+<p><a name="0x1_GenesisState_genesis_address"></a></p>
+<h2 id="function-genesis_address">Function <code>genesis_address</code></h2>
+<p><strong>TODO:</strong> May want to move to CoreAddresses, or just use ASSOCIATION_ROOT_ADDRESS</p>
+<pre><code><b>public</b> <b>fun</b> <a href="#0x1_GenesisState_genesis_address">genesis_address</a>(): address
+</code></pre>
+<details>
+<p><summary>Implementation</summary></p>
+<pre><code><b>public</b> <b>fun</b> <a href="#0x1_GenesisState_genesis_address">genesis_address</a>(): address {
+    <a href="CoreAddresses.md#0x1_CoreAddresses_ASSOCIATION_ROOT_ADDRESS">CoreAddresses::ASSOCIATION_ROOT_ADDRESS</a>()
+}
+</code></pre>
+</details>
+<p><a name="0x1_GenesisState_begin_genesis"></a></p>
+<h2 id="function-begin_genesis">Function <code>begin_genesis</code></h2>
+<p>Abort if genesis has already begun, to protect against unverified code re-starting genesis.</p>
+<pre><code><b>public</b> <b>fun</b> <a href="#0x1_GenesisState_begin_genesis">begin_genesis</a>(account: &signer)
+</code></pre>
+<details>
+<p><summary>Implementation</summary></p>
+<pre><code><b>public</b> <b>fun</b> <a href="#0x1_GenesisState_begin_genesis">begin_genesis</a>(account: &signer) {
+    <b>assert</b>(<a href="Signer.md#0x1_Signer_address_of">Signer::address_of</a>(account) == <a href="#0x1_GenesisState_genesis_address">genesis_address</a>(), 1942);
+    move_to(account, <a href="#0x1_GenesisState">GenesisState</a> { genesis_complete: <b>false</b> })
+}
+</code></pre>
+</details>
+<p><a name="0x1_GenesisState_end_genesis"></a></p>
+<h2 id="function-end_genesis">Function <code>end_genesis</code></h2>
+<pre><code><b>public</b> <b>fun</b> <a href="#0x1_GenesisState_end_genesis">end_genesis</a>()
+</code></pre>
+<details>
+<p><summary>Implementation</summary></p>
+<pre><code><b>public</b> <b>fun</b> <a href="#0x1_GenesisState_end_genesis">end_genesis</a>() <b>acquires</b> <a href="#0x1_GenesisState">GenesisState</a> {
+    <b>let</b> gen_state = borrow_global_mut&lt;<a href="#0x1_GenesisState">GenesisState</a>&gt;(<a href="#0x1_GenesisState_genesis_address">genesis_address</a>());
+    gen_state.genesis_complete = <b>true</b>;
+}
+</code></pre>
+</details>
+<p><a name="0x1_GenesisState_is_during_genesis"></a></p>
+<h2 id="function-is_during_genesis">Function <code>is_during_genesis</code></h2>
+<pre><code><b>public</b> <b>fun</b> <a href="#0x1_GenesisState_is_during_genesis">is_during_genesis</a>(): bool
+</code></pre>
+<details>
+<p><summary>Implementation</summary></p>
+<pre><code><b>public</b> <b>fun</b> <a href="#0x1_GenesisState_is_during_genesis">is_during_genesis</a>(): bool <b>acquires</b> <a href="#0x1_GenesisState">GenesisState</a> {
+    <b>let</b> gen_state = borrow_global_mut&lt;<a href="#0x1_GenesisState">GenesisState</a>&gt;(<a href="#0x1_GenesisState_genesis_address">genesis_address</a>());
+    gen_state.genesis_complete == <b>false</b>
+}
+</code></pre>
+</details>
+<p><a name="0x1_GenesisState_is_after_genesis"></a></p>
+<h2 id="function-is_after_genesis">Function <code>is_after_genesis</code></h2>
+<pre><code><b>public</b> <b>fun</b> <a href="#0x1_GenesisState_is_after_genesis">is_after_genesis</a>(): bool
+</code></pre>
+<details>
+<p><summary>Implementation</summary></p>
+<pre><code><b>public</b> <b>fun</b> <a href="#0x1_GenesisState_is_after_genesis">is_after_genesis</a>(): bool <b>acquires</b> <a href="#0x1_GenesisState">GenesisState</a> {
+    <b>let</b> gen_state = borrow_global_mut&lt;<a href="#0x1_GenesisState">GenesisState</a>&gt;(<a href="#0x1_GenesisState_genesis_address">genesis_address</a>());
+    gen_state.genesis_complete == <b>true</b>
+}
+</code></pre>
+</details>
+<p><a name="0x1_GenesisState_Specification"></a></p>
+<h2 id="specification">Specification</h2>
+<p><a name="0x1_GenesisState_@GenesisState"></a></p>
+<h3 id="genesisstate">GenesisState</h3>
+<p><a name="0x1_GenesisState_@GenesisState_state_machine"></a></p>
+<h4 id="genesisstate-state-machine">GenesisState state machine</h4>
+<p>There is a state machine that tracks the genesis process. There are three states, and it must proceed through them in strict sequences. <strong>before_genesis:</strong> Before start of genesis, there are no instances of the resource, and, of course, none stored at the genesis_address. <strong>during_genesis:</strong> the resource is stored at genesis_address and the “genesis_complete” field is “false”. <strong>after_genesis:</strong> When genesis completes, the resource is stored at genesis_address and the “genesis_complete” field is true.</p>
+<p>For the security and correctness of the system, there are no other transitions. Hence, the transitions from state before_genesis -&gt; during_genesis and transition from state 2 -&gt; 3 are??? irreversible. Correctness of initialization in many modules depends on initialization not changing the state after the first call, so it is important that no code be able to cause the system to enter the genesis states out-of-order.</p>
+<p>Helper functions Instead of literal address, should refer to CoreAddresses.</p>
+<p><a name="0x1_GenesisState_spec_genesis_address"></a></p>
+<pre><code><b>define</b> <a href="#0x1_GenesisState_spec_genesis_address">spec_genesis_address</a>(): address {
+    0xA550C18
+}
+<a name="0x1_GenesisState_spec_genesis_state"></a>
+<b>define</b> <a href="#0x1_GenesisState_spec_genesis_state">spec_genesis_state</a>(): <a href="#0x1_GenesisState">GenesisState</a> {
+    <b>global</b>&lt;<a href="#0x1_GenesisState">GenesisState</a>&gt;(<a href="#0x1_GenesisState_spec_genesis_address">spec_genesis_address</a>())
+}
+<a name="0x1_GenesisState_spec_is_before_genesis"></a>
+<b>define</b> <a href="#0x1_GenesisState_spec_is_before_genesis">spec_is_before_genesis</a>(): bool {
+    !exists&lt;<a href="#0x1_GenesisState">GenesisState</a>&gt;(<a href="#0x1_GenesisState_spec_genesis_address">spec_genesis_address</a>())
+}
+<a name="0x1_GenesisState_spec_is_during_genesis"></a>
+<b>define</b> <a href="#0x1_GenesisState_spec_is_during_genesis">spec_is_during_genesis</a>(): bool {
+    exists&lt;<a href="#0x1_GenesisState">GenesisState</a>&gt;(<a href="#0x1_GenesisState_spec_genesis_address">spec_genesis_address</a>())
+    && !<b>global</b>&lt;<a href="#0x1_GenesisState">GenesisState</a>&gt;(<a href="#0x1_GenesisState_spec_genesis_address">spec_genesis_address</a>()).genesis_complete
+}
+<a name="0x1_GenesisState_spec_is_after_genesis"></a>
+<b>define</b> <a href="#0x1_GenesisState_spec_is_after_genesis">spec_is_after_genesis</a>(): bool {
+    exists&lt;<a href="#0x1_GenesisState">GenesisState</a>&gt;(<a href="#0x1_GenesisState_spec_genesis_address">spec_genesis_address</a>())
+    && <b>global</b>&lt;<a href="#0x1_GenesisState">GenesisState</a>&gt;(<a href="#0x1_GenesisState_spec_genesis_address">spec_genesis_address</a>()).genesis_complete
+}
+</code></pre>
+<p><a name="0x1_GenesisState_TransBeginToDuring"></a></p>
+<p><strong>Informally:</strong> If current state is before genesis, the very next state must be during genesis. Note that this does not allow the system to remain “before genesis” for even one function call, so the transition must happen in the first function call.</p>
+<pre><code><b>schema</b> <a href="#0x1_GenesisState_TransBeginToDuring">TransBeginToDuring</a> {
+    <b>ensures</b> <b>old</b>(<a href="#0x1_GenesisState_spec_is_before_genesis">spec_is_before_genesis</a>()) ==&gt; <a href="#0x1_GenesisState_spec_is_during_genesis">spec_is_during_genesis</a>();
+}
+</code></pre>
+<pre><code><b>apply</b> <a href="#0x1_GenesisState_TransBeginToDuring">TransBeginToDuring</a> <b>to</b> * <b>except</b> genesis_address;
+</code></pre>
+<p><a name="0x1_GenesisState_TransBeginToAfter"></a></p>
+<p><strong>Informally:</strong> If the system has started but not finished genesis, the next state will either be the same, or it will end genesis.</p>
+<pre><code><b>schema</b> <a href="#0x1_GenesisState_TransBeginToAfter">TransBeginToAfter</a> {
+    <b>ensures</b> <b>old</b>(<a href="#0x1_GenesisState_spec_is_during_genesis">spec_is_during_genesis</a>())
+            ==&gt; (<a href="#0x1_GenesisState_spec_is_during_genesis">spec_is_during_genesis</a>() || <a href="#0x1_GenesisState_spec_is_after_genesis">spec_is_after_genesis</a>());
+}
+</code></pre>
+<pre><code><b>apply</b> <a href="#0x1_GenesisState_TransBeginToAfter">TransBeginToAfter</a> <b>to</b> *;
+</code></pre>
+<p><a name="0x1_GenesisState_AfterPersists"></a></p>
+<p><strong>Informally:</strong> If the system has started but not finished genesis, the next state will either be the same, or it will end genesis.</p>
+<pre><code><b>schema</b> <a href="#0x1_GenesisState_AfterPersists">AfterPersists</a> {
+    <b>ensures</b> <b>old</b>(<a href="#0x1_GenesisState_spec_is_after_genesis">spec_is_after_genesis</a>()) ==&gt; <a href="#0x1_GenesisState_spec_is_after_genesis">spec_is_after_genesis</a>();
+}
+</code></pre>
+<pre><code><b>apply</b> <a href="#0x1_GenesisState_AfterPersists">AfterPersists</a> <b>to</b> *;
+</code></pre>
+<p><a name="0x1_GenesisState_Specification_genesis_address"></a></p>
+<h3 id="function-genesis_address-1">Function <code>genesis_address</code></h3>
+<pre><code><b>public</b> <b>fun</b> <a href="#0x1_GenesisState_genesis_address">genesis_address</a>(): address
+</code></pre>
+<p>Does not change genesis state. This is because of “except genesis_address” in the apply of TransBeginToDuring.</p>
+<pre><code><b>ensures</b> <b>old</b>(<a href="#0x1_GenesisState_spec_genesis_state">spec_genesis_state</a>()) == <a href="#0x1_GenesisState_spec_genesis_state">spec_genesis_state</a>();
+</code></pre>
+<p><a name="0x1_GenesisState_Specification_begin_genesis"></a></p>
+<h3 id="function-begin_genesis-1">Function <code>begin_genesis</code></h3>
+<pre><code><b>public</b> <b>fun</b> <a href="#0x1_GenesisState_begin_genesis">begin_genesis</a>(account: &signer)
+</code></pre>
+<pre><code><b>ensures</b> <a href="#0x1_GenesisState_spec_is_during_genesis">spec_is_during_genesis</a>();
+</code></pre>
+<p><a name="0x1_GenesisState_Specification_end_genesis"></a></p>
+<h3 id="function-end_genesis-1">Function <code>end_genesis</code></h3>
+<pre><code><b>public</b> <b>fun</b> <a href="#0x1_GenesisState_end_genesis">end_genesis</a>()
+</code></pre>
+<p>Requires that end_genesis only be called during genesis, which means that it can only be called once. There is no great harm if it is called multiple times, but reporting it as an error might catch code bugs.</p>
+<pre><code><b>requires</b> <a href="#0x1_GenesisState_spec_is_during_genesis">spec_is_during_genesis</a>();
+<b>ensures</b> <a href="#0x1_GenesisState_spec_is_after_genesis">spec_is_after_genesis</a>();
+</code></pre>

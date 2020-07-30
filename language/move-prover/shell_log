@@ -1,0 +1,11 @@
+  751  cargo run --release -- -d ../stdlib/modules ../stdlib/modules/LibraAccount.move
+  752  mv output.bpl libra_account_nonterm.bpl
+  753  /Users/dill/Work/TOOLS/boomble/bin/Debug/netcoreapp3.1/boomble -n:0 -noMutation libra_account_nonterm.bpl 
+  754  ls -l results/
+  755  mv results/shuffle0.bpl la_nonterm.bpl
+  756  /Users/dill/.dotnet/tools/boogie -doModSetAnalysis -printVerifiedProceduresCount:0 -printModel:4 -errorLimit:1 -proverOpt:PROVER_PATH=/usr/local/bin/z3 -vcsCores:1 -proverOpt:O:timeout=40000 -proverOpt:O:smt.QI.EAGER_THRESHOLD=100 -proverOpt:O:smt.QI.LAZY_THRESHOLD=100 -proverOpt:O:smt.random_seed=0 -proverLog:@PROC@ la_nonterm.bpl
+  757  mv _LibraAccount_create_child_vasp_account__verify la_nonterm.smt2
+  758  ./z3 -T:120 smt.qi.profile=true la_nonterm.smt2 >& la_nonterm.qprof # file is missing most interesting quantifiers. Why?
+  759  ./z3 -v:1 -T:120 -tr:instance -tr:bindings la_nonterm.smt2
+  ...
+  769  ./z3 smt.qi.profile=true la_nonterm.smt2 >& la_nonterm.qprof # ran a long time, has interesting quantifiers

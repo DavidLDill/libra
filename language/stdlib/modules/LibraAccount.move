@@ -659,12 +659,12 @@ module LibraAccount {
         add_all_currencies: bool,
     ) {
         let new_account = create_signer(new_account_address);
+        Roles::new_child_vasp_role(parent, &new_account);
         VASP::publish_child_vasp_credential(
             parent,
             &new_account,
         );
-        Roles::new_child_vasp_role(parent, &new_account);
-        Event::publish_generator(&new_account);
+         Event::publish_generator(&new_account);
         add_currencies_for_account<Token>(&new_account, add_all_currencies);
         make_account(new_account, auth_key_prefix)
     }
@@ -993,6 +993,20 @@ module LibraAccount {
             forall child_addr1: address where Roles::spec_has_child_VASP_role_addr(child_addr1):
                 VASP::spec_is_vasp(child_addr1);
     }
+
+    // DD: experiment to get small model.  Didn't help
+    // spec module {
+    //     global addr1: address;
+    //     global addr2: address;
+
+    //     define test_inv(child_addr: address): bool {
+    //         Roles::spec_has_child_VASP_role_addr(child_addr)
+    //             ==> VASP::spec_is_vasp(child_addr)
+    //     }
+
+    //     invariant [global] test_inv(addr1) && test_inv(addr2);
+    // }
+
 
     // TODO (dd): specify that every currency on an account that account limits has account limits.
 

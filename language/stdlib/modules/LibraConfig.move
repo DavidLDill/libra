@@ -33,19 +33,37 @@ module LibraConfig {
     // This can only be invoked by the config address, and only a single time.
     // Currently, it is invoked in the genesis transaction
     public fun initialize(
-        config_account: &signer,
+        lr_account: &signer,
     ) {
         LibraTimestamp::assert_genesis();
-        CoreAddresses::assert_libra_root(config_account);
+        CoreAddresses::assert_libra_root(lr_account);
         assert(!exists<Configuration>(CoreAddresses::LIBRA_ROOT_ADDRESS()), Errors::already_published(ECONFIGURATION));
         move_to<Configuration>(
-            config_account,
+            lr_account,
             Configuration {
                 epoch: 0,
                 last_reconfiguration_time: 0,
-                events: Event::new_event_handle<NewEpochEvent>(config_account),
+                events: Event::new_event_handle<NewEpochEvent>(lr_account),
             }
         );
+    }
+    spec fun initialize {
+        pragma opaque;
+        include InitializeAbortsIf;
+        let new_config = global<Configuration>(CoreAddresses::LIBRA_ROOT_ADDRESS());
+        modifies global<Configuration>(CoreAddresses::LIBRA_ROOT_ADDRESS());
+        ensures exists<Configuration>(CoreAddresses::LIBRA_ROOT_ADDRESS());
+        ensures new_config.epoch == 0;
+        ensures new_config.last_reconfiguration_time == 0;
+        // TODO (dd): add ensures about event handle, if we use it.
+    }
+    spec schema InitializeAbortsIf {
+        lr_account: signer;
+        include LibraTimestamp::AbortsIfNotGenesis;
+        // TODO (dd): It's confusing to have assert_libra_root and AbortsIfNotLibraRoot in both
+        // CoreAddresses and Roles
+        include Roles::AbortsIfNotLibraRoot{account: lr_account};
+        aborts_if exists<Configuration>(CoreAddresses::LIBRA_ROOT_ADDRESS()) with Errors::ALREADY_PUBLISHED;
     }
 
     // Get a copy of `Config` value stored under `addr`.
@@ -100,37 +118,56 @@ module LibraConfig {
         reconfigure_();
     }
 
+    spec fun set_with_capability_and_reconfigure {
+        pragma opaque = true;
+        modifies global<LibraConfig<Config>>(CoreAddresses::LIBRA_ROOT_ADDRESS());
+        include AbortsIfNotPublished<Config>;
+        ensures global<LibraConfig<Config>>(CoreAddresses::LIBRA_ROOT_ADDRESS()).payload == payload;
+    }
+
     // Publish a new config item.
     // The caller will use the returned ModifyConfigCapability to specify the access control
     // policy for who can modify the config.
     // Does not trigger a reconfiguration.
     public fun publish_new_config_and_get_capability<Config: copyable>(
-        config_account: &signer,
+        lr_account: &signer,
         payload: Config,
     ): ModifyConfigCapability<Config> {
         LibraTimestamp::assert_genesis();
-        Roles::assert_libra_root(config_account);
+        Roles::assert_libra_root(lr_account);
         assert(
-            !exists<LibraConfig<Config>>(Signer::address_of(config_account)),
+            !exists<LibraConfig<Config>>(Signer::address_of(lr_account)),
             Errors::already_published(ELIBRA_CONFIG)
         );
-        move_to(config_account, LibraConfig { payload });
+        move_to(lr_account, LibraConfig { payload });
         ModifyConfigCapability<Config> {}
     }
+    spec fun publish_new_config_and_get_capability {
+        modifies global<LibraConfig<Config>>(CoreAddresses::LIBRA_ROOT_ADDRESS());    
+        include LibraTimestamp::AbortsIfNotGenesis;    
+        include Roles::AbortsIfNotLibraRoot{account: lr_account};
+        include AbortsIfPublished<Config>;
+        ensures global<LibraConfig<Config>>(CoreAddresses::LIBRA_ROOT_ADDRESS()) == LibraConfig { payload };
+        ensures result == ModifyConfigCapability<Config> {};
+    }
+    spec schema AbortsIfPublished<Config> {
+        aborts_if exists<LibraConfig<Config>>(CoreAddresses::LIBRA_ROOT_ADDRESS()) with Errors::ALREADY_PUBLISHED;
+    }
+
 
     // Publish a new config item. Only the config address can modify such config.
     // Does not trigger a reconfiguration. Will also publish the capability to
     // modify this config under the given account.
     public fun publish_new_config<Config: copyable>(
-        config_account: &signer,
+        lr_account: &signer,
         payload: Config
     ) {
-        let capability = publish_new_config_and_get_capability<Config>(config_account, payload);
+        let capability = publish_new_config_and_get_capability<Config>(lr_account, payload);
         assert(
-            !exists<ModifyConfigCapability<Config>>(Signer::address_of(config_account)),
+            !exists<ModifyConfigCapability<Config>>(Signer::address_of(lr_account)),
             Errors::already_published(EMODIFY_CAPABILITY)
         );
-        move_to(config_account, capability);
+        move_to(lr_account, capability);
     }
 
     // Publish a new config item. Only the delegated address can modify such config after redeeming the capability.
@@ -220,16 +257,16 @@ module LibraConfig {
         include PublishNewConfigEnsures<Config>;
     }
     spec schema PublishNewConfigAbortsIf<Config> {
-        config_account: signer;
+        lr_account: signer;
         include LibraTimestamp::AbortsIfNotGenesis;
-        include Roles::AbortsIfNotLibraRoot{account: config_account};
+        include Roles::AbortsIfNotLibraRoot{account: lr_account};
         aborts_if spec_is_published<Config>();
-        aborts_if exists<ModifyConfigCapability<Config>>(Signer::spec_address_of(config_account));
+        aborts_if exists<ModifyConfigCapability<Config>>(Signer::spec_address_of(lr_account));
     }
     spec schema PublishNewConfigEnsures<Config> {
-        config_account: signer;
+        lr_account: signer;
          ensures spec_is_published<Config>();
-         ensures exists<ModifyConfigCapability<Config>>(Signer::spec_address_of(config_account));
+         ensures exists<ModifyConfigCapability<Config>>(Signer::spec_address_of(lr_account));
     }
 
 }

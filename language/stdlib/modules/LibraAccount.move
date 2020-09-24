@@ -904,10 +904,8 @@ module LibraAccount {
         );
 
         // (1) publish LibraAccount
-        let authentication_key = auth_key_prefix;
-        Vector::append(
-            &mut authentication_key, LCS::to_bytes(Signer::borrow_address(&new_account))
-        );
+        let authentication_key = auth_key_prefix;        
+        make_authentication_key(&mut authentication_key, &new_account);
         assert(
             Vector::length(&authentication_key) == 32,
             Errors::invalid_argument(EMALFORMED_AUTHENTICATION_KEY)
@@ -938,7 +936,39 @@ module LibraAccount {
         /// Needed to prove invariant
         let new_account_addr = Signer::address_of(new_account);
         requires exists<Roles::RoleId>(new_account_addr);
+        /// TODO(dd): is length of serialized address 5 bytes?
+        aborts_if new_account_addr == CoreAddresses::VM_RESERVED_ADDRESS() with Errors::INVALID_ARGUMENT;
+        aborts_if len(auth_key_prefix) + 5 != 32 with Errors::INVALID_ARGUMENT;
+        include AccountFreezing::CreateAbortsIf { account: new_account };
+        include AccountFreezing::CreateEnsures { account: new_account };
+        aborts_if exists_at(new_account_addr) with Errors::ALREADY_PUBLISHED;
+
+         // TODO (dd): This omits authentication_key and event_handles
+         ensures global<LibraAccount>(new_account_addr).withdrawal_capability
+             == Option::spec_some(
+                    WithdrawCapability {
+                        account_address: new_account_addr
+                });
+         ensures global<LibraAccount>(new_account_addr).key_rotation_capability
+             == Option::spec_some(
+                    KeyRotationCapability {
+                        account_address: new_account_addr
+                });
+         ensures global<LibraAccount>(new_account_addr).sequence_number == 0;
     }
+
+    /// Make an authentication key be destructively appending the serialized account
+    /// address to the authentication prefix.
+    fun make_authentication_key(authentication_key_ref: &mut vector<u8>, account: &signer) {
+        Vector::append(
+            authentication_key_ref, LCS::to_bytes(Signer::borrow_address(account))
+        );
+    }
+    /// For efficiency, this spec says nothing about the authentication key.
+    spec fun make_authentication_key {
+        pragma opaque;
+    }
+    
 
     /// Creates the libra root account in genesis.
     fun create_libra_root_account(
@@ -1525,6 +1555,11 @@ module LibraAccount {
         make_account(new_account, auth_key_prefix)
     }
 
+    // DD: spec fun create_validator_account {
+    // DD:      include MakeAccountAbortsIfs;
+    // DD:      include MakeAccountEnsures;
+    // DD: }
+
     public fun create_validator_operator_account(
         lr_account: &signer,
         new_account_address: address,
@@ -1680,6 +1715,11 @@ module LibraAccount {
     }
     spec module {
         apply BalanceNotDecrease<Token> to *<Token> except withdraw_from, withdraw_from_balance, staple_lbr, unstaple_lbr, preburn, pay_from, epilogue, failure_epilogue, success_epilogue;
+    }
+
+    spec module {
+        /// Every account has an AccountFreezing::FreezingBit resource published.
+        invariant [isolated, global] forall addr1: address where exists_at(addr1): AccountFreezing::has_freezing_bit(addr1);
     }
 }
 }

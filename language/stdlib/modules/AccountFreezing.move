@@ -70,9 +70,20 @@ module AccountFreezing {
         move_to(account, FreezingBit { is_frozen: false })
     }
     spec fun create {
-        let addr = Signer::spec_address_of(account);
+        include CreateAbortsIf;
+        include CreateEnsures;
+    }
+
+    spec schema CreateAbortsIf {
+        account: signer;
+        let addr = Signer::spec_address_of(account);    
         aborts_if exists<FreezingBit>(addr) with Errors::ALREADY_PUBLISHED;
-        ensures spec_account_is_not_frozen(addr);
+    }
+
+    spec schema CreateEnsures {
+        account: signer;
+        let addr = Signer::spec_address_of(account);    
+        ensures spec_account_is_not_frozen(addr);    
     }
 
     /// Freeze the account at `addr`.
@@ -157,6 +168,10 @@ module AccountFreezing {
     }
 
     spec module {
+        define has_freezing_bit(addr: address): bool {
+            exists<FreezingBit>(addr)
+        }
+
         define spec_account_is_frozen(addr: address): bool {
             exists<FreezingBit>(addr) && global<FreezingBit>(addr).is_frozen
         }
@@ -195,7 +210,6 @@ module AccountFreezing {
         /// only (un)freeze functions can change the freezing bits of accounts [B16].
         apply FreezingBitRemainsSame to * except freeze_account, unfreeze_account;
     }
-
 
 }
 }

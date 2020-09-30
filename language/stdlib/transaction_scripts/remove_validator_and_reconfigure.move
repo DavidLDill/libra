@@ -49,7 +49,36 @@ fun remove_validator_and_reconfigure(
     validator_address: address
 ) {
     SlidingNonce::record_nonce_or_abort(lr_account, sliding_nonce);
+    // TODO: Use an error code from Errors.move
     assert(ValidatorConfig::get_human_name(validator_address) == validator_name, 0);
     LibraSystem::remove_validator(lr_account, validator_address);
 }
+
+spec fun remove_validator_and_reconfigure {
+    use 0x1::LibraAccount;
+    use 0x1::Errors;
+
+    include LibraAccount::TransactionChecks{sender: lr_account}; // properties checked by the prologue.
+    include SlidingNonce::RecordNonceAbortsIf{seq_nonce: sliding_nonce, account: lr_account};
+    // next is due to abort in get_human_name
+    include ValidatorConfig::AbortsIfNoValidatorConfig{addr: validator_address};
+    // TODO: use an error code from Errors.move instead of 0.
+    aborts_if ValidatorConfig::get_human_name(validator_address) != validator_name with 0;
+    include LibraSystem::RemoveValidatorAbortsIf;
+    include LibraSystem::RemoveValidatorEnsures;
+
+    /// Reports INVALID_STATE because of is_operating() and !exists<LibraSystem::CapabilityHolder>.
+    /// is_operating() is always true during transactions, and CapabilityHolder is published
+    /// during initialization (Genesis).
+    /// Reports REQUIRES_ROLE if lr_account is not Libra root, but that can't happen
+    /// in practice because it aborts with NOT_PUBLISHED or REQUIRES_ADDRESS, first.
+    aborts_with [check]
+        0, // Odd error code in assert on second statement in add_validator_and_reconfigure
+        Errors::INVALID_ARGUMENT,
+        Errors::NOT_PUBLISHED,        
+        Errors::REQUIRES_ADDRESS,
+//        Errors::INVALID_STATE,
+        Errors::REQUIRES_ROLE;
+    }
 }
+

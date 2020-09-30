@@ -163,28 +163,19 @@ module LibraSystem {
     }
     spec fun add_validator {
         modifies global<LibraConfig::LibraConfig<LibraSystem>>(CoreAddresses::LIBRA_ROOT_ADDRESS());
-        include AddValidatorAbortsIf;
-        include AddValidatorEnsures;
-    }
-
-    spec schema AddValidatorAbortsIf {
-        lr_account: signer;
-        validator_address: address;
         include LibraTimestamp::AbortsIfNotOperating;
         include Roles::AbortsIfNotLibraRoot{account: lr_account};
         include LibraConfig::ReconfigureAbortsIf;
         aborts_if !ValidatorConfig::is_valid(validator_address) with Errors::INVALID_ARGUMENT;
         aborts_if spec_is_validator(validator_address) with Errors::INVALID_ARGUMENT;
-    }
-
-    spec schema AddValidatorEnsures {
-        validator_address: address;
         /// LIP-6 property: validator has validator role. The code does not check this explicitly,
         /// but it is implied by the assert ValidatorConfig::is_valid, since
         /// a published ValidatorConfig has a ValidatorRole is an invariant (in ValidatorConfig).
         ensures Roles::spec_has_validator_role_addr(validator_address);
         ensures ValidatorConfig::is_valid(validator_address);
         ensures spec_is_validator(validator_address);
+    }
+    spec fun add_validator {
         let vs = spec_get_validators();
         ensures Vector::eq_push_back(vs,
                                      old(vs),
@@ -201,13 +192,13 @@ module LibraSystem {
     // If successful, a NewEpochEvent is fired
     public fun remove_validator(
         lr_account: &signer,
-        validator_address: address
+        account_address: address
     ) acquires CapabilityHolder {
         LibraTimestamp::assert_operating();
         Roles::assert_libra_root(lr_account);
         let libra_system_config = get_libra_system_config();
         // Ensure that this address is an active validator
-        let to_remove_index_vec = get_validator_index_(&libra_system_config.validators, validator_address);
+        let to_remove_index_vec = get_validator_index_(&libra_system_config.validators, account_address);
         assert(Option::is_some(&to_remove_index_vec), Errors::invalid_argument(ENOT_AN_ACTIVE_VALIDATOR));
         let to_remove_index = *Option::borrow(&to_remove_index_vec);
         // Remove corresponding ValidatorInfo from the validator set
@@ -217,26 +208,16 @@ module LibraSystem {
     }
     spec fun remove_validator {
         modifies global<LibraConfig::LibraConfig<LibraSystem>>(CoreAddresses::LIBRA_ROOT_ADDRESS());
-        include RemoveValidatorAbortsIf;
-        include RemoveValidatorEnsures;
-    }
-
-    spec schema RemoveValidatorAbortsIf {
-        lr_account: signer;
-        validator_address: address;
-        include Roles::AbortsIfNotLibraRoot{account: lr_account};
         include LibraTimestamp::AbortsIfNotOperating;
         include LibraConfig::ReconfigureAbortsIf;
-        aborts_if !spec_is_validator(validator_address) with Errors::INVALID_ARGUMENT;
+        aborts_if !spec_is_validator(account_address) with Errors::INVALID_ARGUMENT;
     }
-
-    spec schema RemoveValidatorEnsures {
-        validator_address: address;        
+    spec fun remove_validator {
         let vs = spec_get_validators();
-        ensures forall vi in vs where vi.addr != validator_address: exists ovi in old(vs): vi == ovi;
+        ensures forall vi in vs where vi.addr != account_address: exists ovi in old(vs): vi == ovi;
         /// Removed validator is no longer a validator.  Depends on no other entries for same address
         /// in validator_set
-        ensures !spec_is_validator(validator_address);
+        ensures !spec_is_validator(account_address);
     }
 
     // For a calling validator's operator copy the information from ValidatorConfig into the ValidatorSet.

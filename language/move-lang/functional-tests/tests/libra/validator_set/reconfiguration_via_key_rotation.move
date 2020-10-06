@@ -55,7 +55,7 @@ script{
 
 //! block-prologue
 //! proposer: vivian
-//! block-time: 2
+//! block-time: 300001
 
 // not: NewEpochEvent
 // check: "Keep(EXECUTED)"
@@ -82,7 +82,7 @@ script{
 
 //! block-prologue
 //! proposer: vivian
-//! block-time: 3
+//! block-time: 600002
 
 // check: "Keep(EXECUTED)"
 

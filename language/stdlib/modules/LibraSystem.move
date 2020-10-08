@@ -277,7 +277,7 @@ module LibraSystem {
             let validator_info = Vector::borrow_mut(&mut libra_system_config.validators, to_update_index);
             assert(LibraTimestamp::now_microseconds() >
                    validator_info.last_config_update_time + FIVE_MINUTES,
-                   ECONFIG_UPDATE_RATE_LIMITED);
+                   Errors::limit_exceeded(ECONFIG_UPDATE_RATE_LIMITED));
             validator_info.last_config_update_time = LibraTimestamp::now_microseconds();
             set_libra_system_config(libra_system_config);
         }
@@ -300,6 +300,12 @@ module LibraSystem {
                 v_info.addr == validator_addr
                 && v_info.config != ValidatorConfig::spec_get_config(validator_addr));
         include is_validator_info_updated ==> LibraConfig::ReconfigureAbortsIf;
+        // TODO: Started to time out when the assert on last_config_update_time was added.
+        // This aborts_if is needed but Prover still times out.
+        aborts_if is_validator_info_updated
+                  && (exists v_info in spec_get_validators() where v_info.addr == validator_addr:
+                       LibraTimestamp::spec_now_microseconds() <= v_info.last_config_update_time + FIVE_MINUTES)
+             with Errors::LIMIT_EXCEEDED;
     }
     spec schema UpdateConfigAndReconfigureAbortsIf {
         validator_addr: address;

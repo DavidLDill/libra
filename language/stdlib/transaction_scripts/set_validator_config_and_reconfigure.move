@@ -62,6 +62,7 @@ spec fun set_validator_config_and_reconfigure {
     use 0x1::LibraSystem;
     use 0x1::Errors;
     use 0x1::Signer;
+    use 0x1::LibraTimestamp;
 
      // properties checked by the prologue.
    include LibraAccount::TransactionChecks{sender: validator_operator_account};
@@ -94,7 +95,10 @@ spec fun set_validator_config_and_reconfigure {
                     fullnode_network_addresses,
                });
     include is_validator_info_updated ==> LibraConfig::ReconfigureAbortsIf;
-
+    aborts_if is_validator_info_updated
+          && (exists v_info in LibraSystem::spec_get_validators() where v_info.addr == validator_account:
+               LibraTimestamp::spec_now_microseconds() <= v_info.last_config_update_time + LibraSystem::FIVE_MINUTES)
+     with Errors::LIMIT_EXCEEDED;
 
     /// This reports a possible INVALID_STATE abort, which comes from an assert in LibraConfig::reconfigure_
     /// that config.last_reconfiguration_time is not in the future. This is a system error that a user
@@ -103,7 +107,8 @@ spec fun set_validator_config_and_reconfigure {
         Errors::NOT_PUBLISHED,
         Errors::REQUIRES_ROLE,
         Errors::INVALID_ARGUMENT,
-        Errors::INVALID_STATE; // TODO: Undocumented error code. Can be raised in `LibraConfig::reconfigure_`.
+        Errors::LIMIT_EXCEEDED,  // TODO (DD): Fix documentation.
+        Errors::INVALID_STATE; 
 
     /// Access Control
     /// Only the Validator Operator account which has been registered with the validator can

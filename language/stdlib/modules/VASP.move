@@ -73,6 +73,7 @@ module VASP {
         child: &signer,
     ) acquires ParentVASP {
         Roles::assert_parent_vasp_role(parent);
+        Roles::assert_child_vasp_role(child);
         let child_vasp_addr = Signer::address_of(child);
         assert(!is_vasp(child_vasp_addr), Errors::already_published(EPARENT_OR_CHILD_VASP));
         let parent_vasp_addr = Signer::address_of(parent);
@@ -85,7 +86,7 @@ module VASP {
     }
     spec fun publish_child_vasp_credential {
         let child_addr = Signer::spec_address_of(child);
-        include PublishChildVASPAbortsIf{child_addr: child_addr};
+        include PublishChildVASPAbortsIf{child_addr};
         include PublishChildVASPEnsures{parent_addr: Signer::spec_address_of(parent), child_addr: child_addr};
     }
 
@@ -94,6 +95,7 @@ module VASP {
         child_addr: address;
         let parent_addr = Signer::spec_address_of(parent);
         include Roles::AbortsIfNotParentVasp{account: parent};
+        include Roles::AbortsIfNotChildVasp{account: child_addr};
         aborts_if is_vasp(child_addr) with Errors::ALREADY_PUBLISHED;
         aborts_if !is_parent(parent_addr) with Errors::INVALID_ARGUMENT;
         aborts_if spec_num_children(parent_addr) + 1 > MAX_CHILD_ACCOUNTS with Errors::LIMIT_EXCEEDED;

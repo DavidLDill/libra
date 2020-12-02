@@ -73,7 +73,9 @@ module VASP {
         child: &signer,
     ) acquires ParentVASP {
         Roles::assert_parent_vasp_role(parent);
-        Roles::assert_child_vasp_role(child);
+// DD:        Roles::assert_child_vasp_role(child);
+// DD: added next line
+        Roles::new_child_vasp_role(parent, child);
         let child_vasp_addr = Signer::address_of(child);
         assert(!is_vasp(child_vasp_addr), Errors::already_published(EPARENT_OR_CHILD_VASP));
         let parent_vasp_addr = Signer::address_of(parent);
@@ -95,7 +97,9 @@ module VASP {
         child_addr: address;
         let parent_addr = Signer::spec_address_of(parent);
         include Roles::AbortsIfNotParentVasp{account: parent};
-        include Roles::AbortsIfNotChildVasp{account: child_addr};
+// DD        include Roles::AbortsIfNotChildVasp{account: child_addr};
+// DD: added next line
+        aborts_if exists<Roles::RoleId>(child_addr) with Errors::ALREADY_PUBLISHED;
         aborts_if is_vasp(child_addr) with Errors::ALREADY_PUBLISHED;
         aborts_if !is_parent(parent_addr) with Errors::INVALID_ARGUMENT;
         aborts_if spec_num_children(parent_addr) + 1 > MAX_CHILD_ACCOUNTS with Errors::LIMIT_EXCEEDED;

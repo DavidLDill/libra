@@ -1274,7 +1274,10 @@ module LibraAccount {
         add_all_currencies: bool,
     ) acquires AccountOperationsCapability {
         let new_account = create_signer(new_account_address);
-        Roles::new_child_vasp_role(parent, &new_account);
+        // DD: In this context, publish_child_vasp_credential will always have
+        // a child vasp role.  So it can't abort on lack of child vasp.  not sure
+        // why that's a problem with the aborts_ifs, though.
+// DD:        Roles::new_child_vasp_role(parent, &new_account);
         VASP::publish_child_vasp_credential(
             parent,
             &new_account,
@@ -1299,7 +1302,7 @@ module LibraAccount {
         auth_key_prefix: vector<u8>;
         add_all_currencies: bool;
         include Roles::AbortsIfNotParentVasp{account: parent};
-        aborts_if exists<Roles::RoleId>(new_account_address) with Errors::ALREADY_PUBLISHED;
+// DD:        aborts_if exists<Roles::RoleId>(new_account_address) with Errors::ALREADY_PUBLISHED;
         include VASP::PublishChildVASPAbortsIf{child_addr: new_account_address};
         include AddCurrencyForAccountAbortsIf<Token>{addr: new_account_address};
         include MakeAccountAbortsIf{addr: new_account_address};
